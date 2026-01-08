@@ -40,13 +40,25 @@ export const VirtualizedMessageContainer: React.FC<VirtualizedMessageContainerPr
   const previousMessageCountRef = useRef(messages.length);
   const isLoadingRef = useRef(false);
   const previousScrollHeightRef = useRef(0);
-  
+
+  // ✅ FIX: Track all timeouts to prevent memory leaks
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadMoreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ FIX: Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      if (loadMoreTimeoutRef.current) clearTimeout(loadMoreTimeoutRef.current);
+    };
+  }, []);
+
   // Internal windowing state - show last N messages initially
   const [visibleStartIndex, setVisibleStartIndex] = useState(
     Math.max(0, messages.length - initialVisibleCount)
   );
   const pageSize = 20;
-  
+
   // Calculate visible messages
   const visibleMessages = messages.slice(visibleStartIndex);
   const localHasMore = visibleStartIndex > 0;
@@ -54,20 +66,23 @@ export const VirtualizedMessageContainer: React.FC<VirtualizedMessageContainerPr
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (!autoScroll) return;
-    
+
     const container = containerRef.current;
     if (!container) return;
 
     const newMessageCount = messages.length;
     const oldMessageCount = previousMessageCountRef.current;
-    
+
     if (newMessageCount > oldMessageCount) {
       // Check if user was at bottom before new messages arrived
       const wasAtBottom = !userIsScrolledUp;
-      
+
       if (wasAtBottom) {
-        setTimeout(() => {
+        // ✅ FIX: Clear existing timeout before setting new one
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          scrollTimeoutRef.current = null;
         }, 100);
       }
     }
@@ -76,7 +91,7 @@ export const VirtualizedMessageContainer: React.FC<VirtualizedMessageContainerPr
   // Restore scroll position on mount
   useEffect(() => {
     if (!restoreScroll) return;
-    
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -84,9 +99,11 @@ export const VirtualizedMessageContainer: React.FC<VirtualizedMessageContainerPr
     if (savedScroll) {
       container.scrollTop = parseInt(savedScroll, 10);
     } else {
-      // If no saved position, scroll to bottom
-      setTimeout(() => {
+      // ✅ FIX: Use ref for timeout
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        scrollTimeoutRef.current = null;
       }, 100);
     }
   }, [scrollKey, restoreScroll]);
@@ -169,24 +186,29 @@ export const VirtualizedMessageContainer: React.FC<VirtualizedMessageContainerPr
           return newStart;
         });
         
-        // Preserve scroll position after DOM update
-        setTimeout(() => {
+        // ✅ FIX: Preserve scroll position after DOM update with timeout cleanup
+        if (loadMoreTimeoutRef.current) clearTimeout(loadMoreTimeoutRef.current);
+        loadMoreTimeoutRef.current = setTimeout(() => {
           if (containerRef.current) {
             const newScrollHeight = containerRef.current.scrollHeight;
             const scrollDiff = newScrollHeight - prevScrollHeight;
             containerRef.current.scrollTop = scrollTop + scrollDiff;
           }
           isLoadingRef.current = false;
+          loadMoreTimeoutRef.current = null;
         }, 50);
-        
+
         hapticService.light();
       } else if (hasMore) {
         // Load more from server
         isLoadingRef.current = true;
         hapticService.light();
         onLoadMore();
-        setTimeout(() => {
+        // ✅ FIX: Clear existing timeout before setting new one
+        if (loadMoreTimeoutRef.current) clearTimeout(loadMoreTimeoutRef.current);
+        loadMoreTimeoutRef.current = setTimeout(() => {
           isLoadingRef.current = false;
+          loadMoreTimeoutRef.current = null;
         }, 1000);
       }
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { uploadToStorage, insertMediaIndex, insertFileIndex } from '@/services/uploadService';
 import { insertLinkIndex, fetchOpenGraphData } from '@/services/linkService';
 import { sendChatMessage, AttachmentType } from '@/services/chatService';
@@ -22,6 +22,18 @@ export function useShareAsset(tripId: string) {
   const [parsedContent, setParsedContent] = useState<ParsedContent | null>(null);
   const { user } = useAuth();
   const userId = user?.id || '';
+
+  // ✅ FIX: Track cleanup timeouts to prevent memory leaks
+  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ FIX: Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (cleanupTimeoutRef.current) {
+        clearTimeout(cleanupTimeoutRef.current);
+      }
+    };
+  }, []);
 
   async function shareFile(kind: ShareKind, file: File, onProgress?: (progress: number) => void) {
     const fileId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -195,13 +207,17 @@ export function useShareAsset(tripId: string) {
       toast.error(errorMsg);
       throw e;
     } finally {
-      // Clean up progress after a delay
-      setTimeout(() => {
+      // ✅ FIX: Store timeout ref and clear before setting new one to prevent memory leak
+      if (cleanupTimeoutRef.current) {
+        clearTimeout(cleanupTimeoutRef.current);
+      }
+      cleanupTimeoutRef.current = setTimeout(() => {
         setUploadProgress(prev => {
           const updated = { ...prev };
           delete updated[fileId];
           return updated;
         });
+        cleanupTimeoutRef.current = null;
       }, 2000);
       setUploading(false);
     }

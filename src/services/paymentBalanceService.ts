@@ -190,10 +190,13 @@ export const paymentBalanceService = {
         }
       });
 
+      // ✅ FIX: Create Map for O(1) lookups instead of O(n) .find() in loop
+      const paymentMessagesMap = new Map(paymentMessages?.map(m => [m.id, m]) || []);
+
       // Subtract amounts current user owes (negative - they owe others)
       paymentSplits?.forEach(split => {
         if (split.debtor_user_id === userId && !split.is_settled) {
-          const payment = paymentMessages?.find(m => m.id === split.payment_message_id);
+          const payment = paymentMessagesMap.get(split.payment_message_id); // ✅ O(1) instead of O(n)
           if (payment) {
             conversionsNeeded.push({
               splitId: split.id,
@@ -218,10 +221,13 @@ export const paymentBalanceService = {
         })
       );
 
+      // ✅ FIX: Create Maps for O(1) lookups
+      const paymentSplitsMap = new Map(paymentSplits?.map(s => [s.id, s]) || []);
+
       // Process conversion results
       conversionResults.forEach(({ splitId, normalizedAmount, paymentId, debtorId, payerId, isDebtor }) => {
-        const payment = paymentMessages?.find(m => m.id === paymentId);
-        const split = paymentSplits?.find(s => s.id === splitId);
+        const payment = paymentMessagesMap.get(paymentId); // ✅ O(1) instead of O(n)
+        const split = paymentSplitsMap.get(splitId); // ✅ O(1) instead of O(n)
         if (!payment || !split) return;
 
         const confirmStatus = (split.confirmation_status as 'none' | 'pending' | 'confirmed') || 'none';

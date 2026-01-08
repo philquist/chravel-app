@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, User, MoreHorizontal, Archive, Flame, TrendingUp, EyeOff, FileDown, Trash2, Crown } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
@@ -59,7 +59,8 @@ interface TripCardProps {
   onDeleteSuccess?: () => void;
 }
 
-export const TripCard = ({ trip, onArchiveSuccess, onHideSuccess, onDeleteSuccess }: TripCardProps) => {
+// ✅ FIX: Add React.memo to prevent unnecessary re-renders
+export const TripCard = memo(({ trip, onArchiveSuccess, onHideSuccess, onDeleteSuccess }: TripCardProps) => {
   const navigate = useNavigate();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -546,4 +547,6 @@ export const TripCard = ({ trip, onArchiveSuccess, onHideSuccess, onDeleteSucces
       />
     </div>
   );
-};
+}); // ✅ FIX: Close React.memo wrapper
+
+TripCard.displayName = 'TripCard';

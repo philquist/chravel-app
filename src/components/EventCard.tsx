@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Users, Settings, MoreHorizontal, Archive, EyeOff, UserPlus, Trash2 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
@@ -34,7 +34,8 @@ interface EventCardProps {
   onDeleteSuccess?: () => void;
 }
 
-export const EventCard = ({ event, onArchiveSuccess, onHideSuccess, onDeleteSuccess }: EventCardProps) => {
+// ✅ FIX: Add React.memo to prevent unnecessary re-renders
+export const EventCard = memo(({ event, onArchiveSuccess, onHideSuccess, onDeleteSuccess }: EventCardProps) => {
   const navigate = useNavigate();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -307,4 +308,6 @@ export const EventCard = ({ event, onArchiveSuccess, onHideSuccess, onDeleteSucc
       />
     </div>
   );
-};
+}); // ✅ FIX: Close React.memo wrapper
+
+EventCard.displayName = 'EventCard';

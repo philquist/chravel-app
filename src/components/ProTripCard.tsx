@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Eye, Users, Clock, MoreHorizontal, Archive, EyeOff, UserPlus, Trash2 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
@@ -32,7 +32,8 @@ interface ProTripCardProps {
   onDeleteSuccess?: () => void;
 }
 
-export const ProTripCard = ({ trip, onArchiveSuccess, onHideSuccess, onDeleteSuccess }: ProTripCardProps) => {
+// ✅ FIX: Add React.memo to prevent unnecessary re-renders
+export const ProTripCard = memo(({ trip, onArchiveSuccess, onHideSuccess, onDeleteSuccess }: ProTripCardProps) => {
   const navigate = useNavigate();
   const { accentColors } = useTripVariant();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
@@ -288,4 +289,6 @@ export const ProTripCard = ({ trip, onArchiveSuccess, onHideSuccess, onDeleteSuc
       />
     </div>
   );
-};
+}); // ✅ FIX: Close React.memo wrapper
+
+ProTripCard.displayName = 'ProTripCard';
